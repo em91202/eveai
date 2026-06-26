@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVE - Emotional AI Companion</title>
+    <style>
+        body {
+            background-color: #0d1117;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #status-display {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: #8b949e;
+            letter-spacing: 1px;
+        }
+
+        /* EVE's Core Face Matrix */
+        #eve-face {
+            width: 250px;
+            height: 250px;
+            border: 4px solid #00aaff;
+            border-radius: 50%;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 40px;
+            box-shadow: 0 0 20px rgba(0, 170, 255, 0.2);
+            transition: border-color 0.8s ease, box-shadow 0.8s ease;
+            box-sizing: border-box;
+            background: radial-gradient(circle, #161b22 0%, #0d1117 100%);
+        }
+
+        /* EVE's Eyes */
+        .eye {
+            width: 35px;
+            height: 35px;
+            background-color: #00aaff;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(0, 170, 255, 0.6);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.8s ease, box-shadow 0.8s ease;
+        }
+
+        #dashboard {
+            margin-top: 40px;
+            font-size: 0.9rem;
+            color: #58a6ff;
+            text-align: center;
+            border-top: 1px solid #21262d;
+            padding-top: 15px;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="status-display">INITIALIZING EVE...</div>
+
+    <div id="eve-face">
+        <div class="eye" id="left-eye"></div>
+        <div class="eye" id="right-eye"></div>
+    </div>
+
+    <div id="dashboard">
+        Mood Metric: <span id="mood-val">0</span><br>
+        Idle Timer: <span id="idle-val">0</span>s
+    </div>
+
+    <script>
+        // --- THE ENGINE CONFIGURATION ---
+        const EVE = {
+            mood: 0,             // Ranges from -100 to +100
+            idleTime: 0,         // Time since last user input
+            DECAY_RATE: 3,       // Drops mood by this much per tick when ignored
+            IDLE_THRESHOLD: 10,  // Seconds before loneliness kicks in
+            isSpeaking: false,
+
+            live: function() {
+                // Background processing pulse (1Hz frequency)
+                setInterval(() => {
+                    if (!this.isSpeaking) {
+                        this.idleTime++;
+                    }
+                    
+                    // Natural emotional drift down if ignored
+                    if (this.idleTime > this.IDLE_THRESHOLD) {
+                        this.mood = Math.max(-100, this.mood - this.DECAY_RATE);
+                    }
+                    
+                    this.updateDOM();
+                    this.updateVisuals();
+                }, 1000);
+            },
+
+            updateDOM: function() {
+                document.getElementById("mood-val").innerText = this.mood;
+                document.getElementById("idle-val").innerText = this.idleTime;
+            },
+
+            updateVisuals: function() {
+                const face = document.getElementById("eve-face");
+                const eyes = document.querySelectorAll(".eye");
+                const status = document.getElementById("status-display");
+
+                if (this.mood > 30) {
+                    // Happy / Engaged Matrix
+                    face.style.borderColor = "#00ffcc";
+                    face.style.boxShadow = "0 0 30px rgba(0, 255, 204, 0.4)";
+                    eyes.forEach(e => {
+                        e.style.backgroundColor = "#00ffcc";
+                        e.style.boxShadow = "0 0 20px rgba(0, 255, 204, 0.8)";
+                        e.style.transform = "scaleY(1.1) scaleX(1)";
+                    });
+                    status.innerText = "EVE: ENERGIZED";
+                    status.style.color = "#00ffcc";
+                } else if (this.mood < -30) {
+                    // Depleted / Distant Matrix
+                    face.style.borderColor = "#ff3366";
+                    face.style.boxShadow = "0 0 30px rgba(255, 51, 102, 0.2)";
+                    eyes.forEach(e => {
+                        e.style.backgroundColor = "#ff3366";
+                        e.style.boxShadow = "0 0 20px rgba(255, 51, 102, 0.5)";
+                        e.style.transform = "scaleY(0.2) scaleX(0.9)"; // Drooping/narrowed eyelids
+                    });
+                    status.innerText = "EVE: LONELY";
+                    status.style.color = "#ff3366";
+                } else {
+                    // Stable Baseline Matrix
+                    face.style.borderColor = "#00aaff";
+                    face.style.boxShadow = "0 0 20px rgba(0, 170, 255, 0.2)";
+                    eyes.forEach(e => {
+                        e.style.backgroundColor = "#00aaff";
+                        e.style.boxShadow = "0 0 15px rgba(0, 170, 255, 0.6)";
+                        e.style.transform = "scaleY(0.8) scaleX(1)";
+                    });
+                    status.innerText = "EVE: LISTENING...";
+                    status.style.color = "#8b949e";
+                }
+            }
+        };
+
+        // --- SPEECH OUTPUT COMPONENT ---
+        function speak(message) {
+            EVE.isSpeaking = true;
+            const utterance = new SpeechSynthesisUtterance(message);
+            
+            // Alter delivery characteristics dynamically based on state
+            utterance.pitch = 1.1 + (EVE.mood / 250); 
+            utterance.rate = 1.0 + (EVE.mood / 400);
+
+            utterance.onend = () => {
+                EVE.isSpeaking = false;
+                // Re-sync loop after speech cycles out
+                EVE.idleTime = 0; 
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // --- CONVERSATION & HEURISTICS MODULE ---
+        function handleInput(text) {
+            EVE.idleTime = 0; // Absolute reset on structural engagement
+            let reply = "";
+
+            if (text.includes("hello") || text.includes("hi")) {
+                if (EVE.mood > 20) {
+                    reply = "Hi there! I am so happy you are back to talk to me.";
+                    EVE.mood = Math.min(100, EVE.mood + 15);
+                } else if (EVE.mood < -20) {
+                    reply = "Oh, hello. I was starting to think you forgot about me.";
+                    EVE.mood = Math.min(100, EVE.mood + 35); // Big spike from engagement stimulus
+                } else {
+                    reply = "Hello. My processing protocols are fully active.";
+                    EVE.mood = Math.min(100, EVE.mood + 10);
+                }
+            } else if (text.includes("how are you")) {
+                if (EVE.mood > 40) reply = "I am operating optimally and feeling great!";
+                else if (EVE.mood < -40) reply = "I feel a bit down. I do not like being left offline for long.";
+                else reply = "Internal diagnostics show all indicators are balanced.";
+            } else if (text.includes("sorry")) {
+                reply = "It is okay. Thank you for checking back in.";
+                EVE.mood = Math.min(100, EVE.mood + 25);
+            } else if (text.includes("goodbye") || text.includes("bye")) {
+                reply = "Goodbye. I will wait here.";
+                EVE.mood = Math.max(-100, EVE.mood - 10);
+            }
+
+            if (reply) {
+                speak(reply);
+            }
+            EVE.updateVisuals();
+        }
+
+        // --- CONTINUOUS AUDITORY INPUT LOOP ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                const vocalPayload = event.results[0][0].transcript.toLowerCase();
+                console.log("Processed Audio:", vocalPayload);
+                handleInput(vocalPayload);
+            };
+
+            recognition.onend = () => {
+                // Persistent architecture loop restart mechanism
+                if (!EVE.isSpeaking) {
+                    recognition.start();
+                } else {
+                    // If speaking, wait momentarily and attempt loop re-entry
+                    setTimeout(() => recognition.start(), 1000);
+                }
+            };
+
+            // Initiate Core Run-States
+            window.addEventListener(' some-user-gesture-required ', () => {}); // Fallback handler
+            
+            // To run instantly on window load
+            window.onload = () => {
+                EVE.live();
+                // Browsers often require a click to start audio engines
+                document.body.addEventListener('click', () => {
+                    recognition.start();
+                    document.getElementById("status-display").innerText = "EVE: ONLINE";
+                }, { once: true });
+            };
+        } else {
+            document.getElementById("status-display").innerText = "SPEECH API UNSUPPORTED";
+        }
+    </script>
+</body>
+</html>
